@@ -357,6 +357,12 @@ export default function App() {
       notes: answers.notes,
     }
     try {
+      // Fire email immediately (don't wait on the API) so Netlify always notifies
+      const emailPromise = notifyGentleman(payload).catch((emailErr) => {
+        console.warn('Web3Forms email threw:', emailErr)
+        return false
+      })
+
       const res = await fetch(`${API_BASE}/api/date-requests`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -367,12 +373,7 @@ export default function App() {
         throw new Error(data.errors?.[0] || 'Submit failed')
       }
 
-      // Email is best-effort — DB save already succeeded
-      try {
-        await notifyGentleman(payload)
-      } catch (emailErr) {
-        console.warn('Web3Forms email threw:', emailErr)
-      }
+      await emailPromise
       setStep('done')
     } catch (err) {
       setError(err.message || 'Something went wrong')
