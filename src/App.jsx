@@ -41,7 +41,9 @@ function getTimeSlotsForDay(isoDate) {
 }
 
 const API_BASE = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
-const WEB3FORMS_KEY = import.meta.env.VITE_WEB3FORMS_ACCESS_KEY ?? ''
+// Web3Forms access keys are designed to be public (browser-side).
+const WEB3FORMS_KEY =
+  import.meta.env.VITE_WEB3FORMS_ACCESS_KEY || '6032078b-2e8d-4cd9-ac75-cb876205b848'
 
 function pad(n) {
   return String(n).padStart(2, '0')
@@ -309,36 +311,39 @@ export default function App() {
   }
 
   async function notifyGentleman(payload) {
-    if (!WEB3FORMS_KEY) return
+    const message = [
+      'She said YES.',
+      '',
+      `Day: ${payload.dateDay}`,
+      `Time: ${payload.dateTime}`,
+      `Activity: ${payload.activity}`,
+      `Notes for the gentleman: ${payload.notes?.trim() || '(none)'}`,
+    ].join('\n')
+
+    const formData = new FormData()
+    formData.append('access_key', WEB3FORMS_KEY)
+    formData.append('subject', `Date confirmed: ${payload.activity} on ${payload.dateDay} at ${payload.dateTime}`)
+    formData.append('from_name', 'AskMeOut')
+    formData.append('name', 'AskMeOut Date Form')
+    formData.append('will_date', 'YES')
+    formData.append('day', payload.dateDay)
+    formData.append('time', payload.dateTime)
+    formData.append('activity', payload.activity)
+    formData.append('notes', payload.notes?.trim() || '(no notes)')
+    formData.append('message', message)
+    formData.append('botcheck', '')
 
     const response = await fetch('https://api.web3forms.com/submit', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({
-        access_key: WEB3FORMS_KEY,
-        subject: `Date confirmed: ${payload.activity} on ${payload.dateDay} at ${payload.dateTime}`,
-        from_name: 'AskMeOut',
-        name: 'AskMeOut Date Form',
-        will_date: 'YES',
-        day: payload.dateDay,
-        time: payload.dateTime,
-        activity: payload.activity,
-        notes: payload.notes || '(no notes)',
-        message: [
-          'She said YES.',
-          '',
-          `Day: ${payload.dateDay}`,
-          `Time: ${payload.dateTime}`,
-          `Activity: ${payload.activity}`,
-          `Notes for the gentleman: ${payload.notes || '(none)'}`,
-        ].join('\n'),
-      }),
+      body: formData,
     })
 
     const data = await response.json().catch(() => ({}))
     if (!response.ok || data.success === false) {
       console.warn('Web3Forms email failed:', data.message || response.statusText)
+      return false
     }
+    return true
   }
 
   async function submit() {
@@ -362,7 +367,12 @@ export default function App() {
         throw new Error(data.errors?.[0] || 'Submit failed')
       }
 
-      await notifyGentleman(payload)
+      // Email is best-effort — DB save already succeeded
+      try {
+        await notifyGentleman(payload)
+      } catch (emailErr) {
+        console.warn('Web3Forms email threw:', emailErr)
+      }
       setStep('done')
     } catch (err) {
       setError(err.message || 'Something went wrong')
