@@ -44,6 +44,7 @@ const API_BASE = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
 // Web3Forms access keys are designed to be public (browser-side).
 const WEB3FORMS_KEY =
   import.meta.env.VITE_WEB3FORMS_ACCESS_KEY || '6032078b-2e8d-4cd9-ac75-cb876205b848'
+const NOTIFY_EMAIL = import.meta.env.VITE_NOTIFY_EMAIL || 'hextech.ch@gmail.com'
 
 function pad(n) {
   return String(n).padStart(2, '0')
@@ -310,8 +311,8 @@ export default function App() {
     setError('')
   }
 
-  async function notifyViaNetlifyForms(payload) {
-    const message = [
+  function buildMessage(payload) {
+    return [
       'She said YES.',
       '',
       `Day: ${payload.dateDay}`,
@@ -319,19 +320,46 @@ export default function App() {
       `Activity: ${payload.activity}`,
       `Notes for the gentleman: ${payload.notes?.trim() || '(none)'}`,
     ].join('\n')
+  }
 
+  async function notifyViaFormSubmit(payload) {
+    // Direct to your Gmail — works when Web3Forms silently drops prod posts
+    const response = await fetch(`https://formsubmit.co/ajax/${NOTIFY_EMAIL}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({
+        name: 'AskMeOut',
+        _subject: `Date confirmed: ${payload.activity} · ${payload.dateDay} ${payload.dateTime}`,
+        _template: 'table',
+        _captcha: 'false',
+        day: payload.dateDay,
+        time: payload.dateTime,
+        activity: payload.activity,
+        notes: payload.notes?.trim() || '(none)',
+        message: buildMessage(payload),
+      }),
+    })
+
+    const data = await response.json().catch(() => ({}))
+    return Boolean(response.ok && (data.success === 'true' || data.success === true))
+  }
+
+  async function notifyViaNetlifyForms(payload) {
     const body = new URLSearchParams({
       'form-name': 'date-request',
+      'bot-field': '',
       will_date: 'YES',
       day: payload.dateDay,
       time: payload.dateTime,
       activity: payload.activity,
       notes: payload.notes?.trim() || '(no notes)',
-      message,
+      message: buildMessage(payload),
     })
 
-    // Post to real HTML endpoint (not SPA fallback)
-    const response = await fetch('/form.html', {
+    const response = await fetch('/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: body.toString(),
@@ -341,25 +369,16 @@ export default function App() {
   }
 
   async function notifyViaWeb3Forms(payload) {
-    const message = [
-      'She said YES.',
-      '',
-      `Day: ${payload.dateDay}`,
-      `Time: ${payload.dateTime}`,
-      `Activity: ${payload.activity}`,
-      `Notes for the gentleman: ${payload.notes?.trim() || '(none)'}`,
-    ].join('\n')
-
     const formData = new FormData()
     formData.append('access_key', WEB3FORMS_KEY)
     formData.append(
       'subject',
-      `Date confirmed: ${payload.activity} on ${payload.dateDay} at ${payload.dateTime}`,
+      `Date confirmed: ${payload.activity} · ${payload.dateDay} ${payload.dateTime}`,
     )
     formData.append('from_name', 'AskMeOut')
-    formData.append('name', 'AskMeOut Date Form')
-    formData.append('message', message)
-    formData.append('botcheck', '')
+    formData.append('name', 'AskMeOut')
+    formData.append('email', NOTIFY_EMAIL)
+    formData.append('message', buildMessage(payload))
 
     const response = await fetch('https://api.web3forms.com/submit', {
       method: 'POST',
@@ -374,7 +393,7 @@ export default function App() {
     const response = await fetch('/.netlify/functions/notify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ ...payload, notifyEmail: NOTIFY_EMAIL }),
     })
     const data = await response.json().catch(() => ({}))
     return Boolean(data.ok)
@@ -382,8 +401,9 @@ export default function App() {
 
   async function notifyGentleman(payload) {
     const results = await Promise.allSettled([
-      notifyViaNetlifyForms(payload),
+      notifyViaFormSubmit(payload),
       notifyViaWeb3Forms(payload),
+      notifyViaNetlifyForms(payload),
       notifyViaNetlifyFunction(payload),
     ])
 
