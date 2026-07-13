@@ -1,7 +1,10 @@
 [build]
   command = "npm run build"
   publish = "dist"
+  functions = "netlify/functions"
 
+# Real files like /form.html and /assets/* are served first.
+# SPA fallback only for missing routes.
 [[redirects]]
   from = "/*"
   to = "/index.html"

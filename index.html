@@ -15,6 +15,17 @@
     <title>will you go out with me? &lt;3</title>
   </head>
   <body>
+    <!-- Netlify Forms: must exist in built HTML for detection -->
+    <form name="date-request" netlify netlify-honeypot="bot-field" hidden>
+      <input type="text" name="bot-field" />
+      <input type="text" name="will_date" />
+      <input type="text" name="day" />
+      <input type="text" name="time" />
+      <input type="text" name="activity" />
+      <input type="text" name="notes" />
+      <textarea name="message"></textarea>
+    </form>
+
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

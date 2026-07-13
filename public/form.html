@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>date request form</title>
+  </head>
+  <body>
+    <!-- Dedicated endpoint so SPA redirects don't eat form POSTs -->
+    <form name="date-request" method="POST" netlify netlify-honeypot="bot-field">
+      <input type="hidden" name="form-name" value="date-request" />
+      <input type="text" name="bot-field" />
+      <input type="text" name="will_date" />
+      <input type="text" name="day" />
+      <input type="text" name="time" />
+      <input type="text" name="activity" />
+      <input type="text" name="notes" />
+      <textarea name="message"></textarea>
+      <button type="submit">Send</button>
+    </form>
+  </body>
+</html>

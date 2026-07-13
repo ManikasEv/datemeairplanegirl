@@ -310,7 +310,37 @@ export default function App() {
     setError('')
   }
 
-  async function notifyGentleman(payload) {
+  async function notifyViaNetlifyForms(payload) {
+    const message = [
+      'She said YES.',
+      '',
+      `Day: ${payload.dateDay}`,
+      `Time: ${payload.dateTime}`,
+      `Activity: ${payload.activity}`,
+      `Notes for the gentleman: ${payload.notes?.trim() || '(none)'}`,
+    ].join('\n')
+
+    const body = new URLSearchParams({
+      'form-name': 'date-request',
+      will_date: 'YES',
+      day: payload.dateDay,
+      time: payload.dateTime,
+      activity: payload.activity,
+      notes: payload.notes?.trim() || '(no notes)',
+      message,
+    })
+
+    // Post to real HTML endpoint (not SPA fallback)
+    const response = await fetch('/form.html', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString(),
+    })
+
+    return response.ok || response.status === 200
+  }
+
+  async function notifyViaWeb3Forms(payload) {
     const message = [
       'She said YES.',
       '',
@@ -322,14 +352,12 @@ export default function App() {
 
     const formData = new FormData()
     formData.append('access_key', WEB3FORMS_KEY)
-    formData.append('subject', `Date confirmed: ${payload.activity} on ${payload.dateDay} at ${payload.dateTime}`)
+    formData.append(
+      'subject',
+      `Date confirmed: ${payload.activity} on ${payload.dateDay} at ${payload.dateTime}`,
+    )
     formData.append('from_name', 'AskMeOut')
     formData.append('name', 'AskMeOut Date Form')
-    formData.append('will_date', 'YES')
-    formData.append('day', payload.dateDay)
-    formData.append('time', payload.dateTime)
-    formData.append('activity', payload.activity)
-    formData.append('notes', payload.notes?.trim() || '(no notes)')
     formData.append('message', message)
     formData.append('botcheck', '')
 
@@ -339,11 +367,34 @@ export default function App() {
     })
 
     const data = await response.json().catch(() => ({}))
-    if (!response.ok || data.success === false) {
-      console.warn('Web3Forms email failed:', data.message || response.statusText)
-      return false
+    return Boolean(response.ok && data.success !== false)
+  }
+
+  async function notifyViaNetlifyFunction(payload) {
+    const response = await fetch('/.netlify/functions/notify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    const data = await response.json().catch(() => ({}))
+    return Boolean(data.ok)
+  }
+
+  async function notifyGentleman(payload) {
+    const results = await Promise.allSettled([
+      notifyViaNetlifyForms(payload),
+      notifyViaWeb3Forms(payload),
+      notifyViaNetlifyFunction(payload),
+    ])
+
+    const ok = results.some((r) => r.status === 'fulfilled' && r.value === true)
+    if (!ok) {
+      console.warn(
+        'All email channels failed',
+        results.map((r) => (r.status === 'fulfilled' ? r.value : String(r.reason))),
+      )
     }
-    return true
+    return ok
   }
 
   async function submit() {
@@ -357,11 +408,7 @@ export default function App() {
       notes: answers.notes,
     }
     try {
-      // Fire email immediately (don't wait on the API) so Netlify always notifies
-      const emailPromise = notifyGentleman(payload).catch((emailErr) => {
-        console.warn('Web3Forms email threw:', emailErr)
-        return false
-      })
+      const emailPromise = notifyGentleman(payload)
 
       const res = await fetch(`${API_BASE}/api/date-requests`, {
         method: 'POST',
