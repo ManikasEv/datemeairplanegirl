@@ -181,9 +181,11 @@ body::before {
 .hero-frame img {
   display: block;
   width: 100%;
-  height: clamp(6.5rem, 24vw, 10rem);
+  aspect-ratio: 16 / 10;
+  height: auto;
+  max-height: 11.5rem;
   object-fit: cover;
-  object-position: center 35%;
+  object-position: center center;
 }
 
 @media (min-width: 640px) {
@@ -194,7 +196,8 @@ body::before {
   }
 
   .hero-frame img {
-    height: clamp(11rem, 26vw, 15rem);
+    aspect-ratio: 16 / 9;
+    max-height: 15rem;
   }
 }
 
