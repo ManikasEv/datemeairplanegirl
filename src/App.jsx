@@ -9,25 +9,38 @@ const ACTIVITIES = [
   {
     id: 'dinner',
     label: 'Dinner',
-    blurb: 'Candlelight, shared dessert, and me trying not to spill.',
+    blurb: 'Candlelight and shared dessert.',
     image: dinnerImg,
   },
   {
     id: 'bowling',
     label: 'Bowling',
-    blurb: 'I will pretend the gutter balls were intentional.',
+    blurb: 'Gutter balls welcome.',
     image: bowlingImg,
   },
   {
     id: 'swimming',
     label: 'Swimming',
-    blurb: 'Pool floats, soft light, and zero serious swimming.',
+    blurb: 'Floats over freestyle.',
     image: swimmingImg,
   },
 ]
-const TIME_SLOTS = ['17:00', '18:00', '19:00', '20:00', '21:00']
+const WEEKDAY_TIME_SLOTS = ['17:00', '18:00', '19:00', '20:00', '21:00']
+const WEEKEND_TIME_SLOTS = ['10:00', '11:00', '12:00', '13:00', '14:00', '17:00', '18:00', '19:00', '20:00', '21:00']
 
-const API_BASE = import.meta.env.VITE_API_URL ?? ''
+function isWeekendDate(date) {
+  const day = date.getDay()
+  return day === 0 || day === 6
+}
+
+function getTimeSlotsForDay(isoDate) {
+  if (!isoDate) return WEEKDAY_TIME_SLOTS
+  const [y, m, d] = isoDate.split('-').map(Number)
+  const date = new Date(y, m - 1, d)
+  return isWeekendDate(date) ? WEEKEND_TIME_SLOTS : WEEKDAY_TIME_SLOTS
+}
+
+const API_BASE = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
 const WEB3FORMS_KEY = import.meta.env.VITE_WEB3FORMS_ACCESS_KEY ?? ''
 
 function pad(n) {
@@ -63,6 +76,7 @@ function getThisWeekDays() {
       iso: toISODate(date),
       label: date.toLocaleDateString(undefined, { weekday: 'short' }),
       available: isDayBookable(date),
+      weekend: isWeekendDate(date),
     }
   })
 }
@@ -70,13 +84,13 @@ function getThisWeekDays() {
 function FloatingHearts() {
   const hearts = useMemo(
     () =>
-      Array.from({ length: 14 }, (_, i) => ({
+      Array.from({ length: 8 }, (_, i) => ({
         id: i,
-        left: `${(i * 7.3 + 4) % 96}%`,
-        delay: `${(i * 0.7) % 8}s`,
-        duration: `${10 + (i % 5) * 2.2}s`,
-        size: `${0.85 + (i % 4) * 0.28}rem`,
-        glyph: i % 3 === 0 ? '♥' : i % 3 === 1 ? '♡' : '❤',
+        left: `${(i * 12 + 6) % 94}%`,
+        delay: `${(i * 0.9) % 7}s`,
+        duration: `${11 + (i % 4) * 2}s`,
+        size: `${0.8 + (i % 3) * 0.25}rem`,
+        glyph: i % 2 === 0 ? '♥' : '♡',
       })),
     [],
   )
@@ -107,14 +121,7 @@ function RunawayNoButton({ onYes, onAlmostCaught }) {
   const [pos, setPos] = useState(null)
   const [taunts, setTaunts] = useState(0)
 
-  const tauntLines = [
-    'nice try ♡',
-    'nope ♥',
-    'still no',
-    'catch me~',
-    'say yes instead',
-    'the heart says yes',
-  ]
+  const tauntLines = ['nice try ♡', 'nope ♥', 'still no', 'catch me~', 'say yes instead', 'heart says yes']
 
   function clampInside(preferredX, preferredY) {
     const arena = arenaRef.current
@@ -191,13 +198,13 @@ function RunawayNoButton({ onYes, onAlmostCaught }) {
 
   return (
     <div ref={arenaRef} className="playfield">
-      <p className="pointer-events-none absolute left-1/2 top-3 z-0 -translate-x-1/2 text-xs font-medium text-[var(--rose)]/70">
-        try clicking No… if you can ♥
+      <p className="pointer-events-none absolute inset-x-2 top-2 z-0 text-center text-[0.7rem] font-medium text-[var(--rose)]/75 sm:top-3 sm:text-xs">
+        try tapping No… if you can ♥
       </p>
 
       <button
         type="button"
-        className="animate-soft-pulse absolute left-1/2 top-[46%] z-10 -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-[var(--pink)] px-10 py-3.5 text-base font-bold text-white shadow-[0_14px_40px_rgba(255,93,158,0.4)] transition hover:brightness-110 active:scale-[0.98]"
+        className="animate-soft-pulse absolute left-1/2 top-[48%] z-10 -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-[var(--pink)] px-9 py-3.5 text-base font-bold text-white shadow-[0_14px_36px_rgba(255,93,158,0.42)] transition active:scale-[0.98] sm:px-11 sm:text-lg"
         onClick={onYes}
       >
         Yes ♥
@@ -207,11 +214,11 @@ function RunawayNoButton({ onYes, onAlmostCaught }) {
         ref={btnRef}
         type="button"
         aria-label="No (good luck)"
-        className="runaway-no z-20 rounded-2xl border-2 border-[var(--rose)]/40 bg-white/85 px-7 py-3 text-base font-semibold text-[var(--rose)] shadow-[0_8px_24px_rgba(232,58,122,0.2)] backdrop-blur-sm transition-[left,top] duration-150 ease-out"
+        className="runaway-no z-20 rounded-2xl border-2 border-[var(--rose)]/40 bg-white/90 font-semibold text-[var(--rose)] shadow-[0_8px_22px_rgba(232,58,122,0.18)] backdrop-blur-sm transition-[left,top] duration-150 ease-out"
         style={
           pos
             ? { position: 'absolute', left: pos.x, top: pos.y }
-            : { position: 'absolute', right: 20, bottom: 28 }
+            : { position: 'absolute', right: 12, bottom: 16 }
         }
         onMouseEnter={flee}
         onFocus={flee}
@@ -226,24 +233,23 @@ function RunawayNoButton({ onYes, onAlmostCaught }) {
 
 function StepShell({ title, subtitle, children, stepKey, image, imageAlt }) {
   return (
-    <div key={stepKey} className="animate-fade-up mx-auto w-full max-w-xl px-5">
-      <p className="font-display mb-1 text-center text-5xl leading-none text-[var(--rose)] sm:text-6xl md:text-7xl">
-        AskMeOut
-      </p>
-      <p className="mb-5 text-center text-sm font-medium tracking-wide text-[var(--ink)]/55">a little love quest ♥</p>
-
+    <div key={stepKey} className="animate-fade-up sheet">
       {image ? (
-        <div className="animate-floaty mb-6 overflow-hidden rounded-[1.75rem] border border-[var(--pink)]/25 shadow-[0_18px_50px_rgba(232,58,122,0.22)]">
-          <img src={image} alt={imageAlt || ''} className="aspect-[16/10] w-full object-cover" />
+        <div className="hero-frame animate-floaty mb-4 sm:mb-5">
+          <img src={image} alt={imageAlt || ''} />
         </div>
       ) : null}
 
-      <h1 className="mb-2 text-center text-xl font-bold text-[var(--night)] sm:text-2xl">{title}</h1>
+      <h1 className="mb-1.5 text-center text-[1.35rem] font-bold leading-tight text-[var(--night)] sm:text-2xl">
+        {title}
+      </h1>
       {subtitle ? (
-        <p className="mx-auto mb-8 max-w-md text-center text-sm leading-relaxed text-[var(--ink)]/70 sm:text-base">
+        <p className="mx-auto mb-5 max-w-sm text-center text-[0.84rem] leading-relaxed text-[var(--ink)]/68 sm:mb-6 sm:text-[0.95rem]">
           {subtitle}
         </p>
-      ) : null}
+      ) : (
+        <div className="mb-4" />
+      )}
       {children}
     </div>
   )
@@ -253,12 +259,12 @@ function ProgressDots({ step }) {
   const index = STEPS.indexOf(step)
   if (step === 'done') return null
   return (
-    <div className="relative z-10 mb-6 flex justify-center gap-2" aria-hidden>
+    <div className="relative z-10 mb-3 flex justify-center gap-1.5 sm:mb-5 sm:gap-2" aria-hidden>
       {STEPS.filter((s) => s !== 'done').map((s, i) => (
         <span
           key={s}
           className={`h-1.5 rounded-full transition-all duration-300 ${
-            i <= index ? 'w-8 bg-[var(--pink)]' : 'w-3 bg-[var(--rose)]/20'
+            i <= index ? 'w-7 bg-[var(--pink)] sm:w-8' : 'w-2.5 bg-[var(--rose)]/20 sm:w-3'
           }`}
         />
       ))}
@@ -279,15 +285,23 @@ export default function App() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const weekDays = useMemo(() => getThisWeekDays(), [])
+  const timeSlots = useMemo(() => getTimeSlotsForDay(answers.dateDay), [answers.dateDay])
+  const availableDays = useMemo(() => weekDays.filter((day) => day.available), [weekDays])
 
   useEffect(() => {
     if (answers.dateDay) {
       const day = weekDays.find((d) => d.iso === answers.dateDay)
       if (day && !day.available) {
-        setAnswers((prev) => ({ ...prev, dateDay: '' }))
+        setAnswers((prev) => ({ ...prev, dateDay: '', dateTime: '' }))
       }
     }
   }, [answers.dateDay, weekDays])
+
+  useEffect(() => {
+    if (answers.dateTime && !timeSlots.includes(answers.dateTime)) {
+      setAnswers((prev) => ({ ...prev, dateTime: '' }))
+    }
+  }, [answers.dateTime, timeSlots])
 
   function savePartial(patch) {
     setAnswers((prev) => ({ ...prev, ...patch }))
@@ -358,11 +372,11 @@ export default function App() {
   }
 
   return (
-    <main className="relative flex min-h-dvh flex-col items-center justify-center overflow-x-hidden py-14 sm:py-20">
+    <main className="app-main">
       <FloatingHearts />
 
-      <div className="pointer-events-none absolute inset-x-0 top-8 flex justify-center">
-        <div className="animate-floaty h-44 w-44 rounded-full bg-[var(--glow)] blur-3xl" />
+      <div className="pointer-events-none absolute inset-x-0 top-6 flex justify-center opacity-70">
+        <div className="animate-floaty h-36 w-36 rounded-full bg-[var(--glow)] blur-3xl sm:h-44 sm:w-44" />
       </div>
 
       <ProgressDots step={step} />
@@ -373,8 +387,8 @@ export default function App() {
           title="Will you date me?"
           subtitle={
             escapeCount > 2
-              ? 'The No button is emotionally unavailable. Your heart already knows.'
-              : 'A scientifically optimized dating protocol. Side effects may include butterflies.'
+              ? 'No keeps running away. Your heart already knows.'
+              : 'Butterflies included. One correct answer.'
           }
           image={heroRomance}
           imageAlt="Soft pink roses and hearts"
@@ -386,37 +400,31 @@ export default function App() {
               setStep('when')
             }}
           />
-          <p className="mt-6 text-center text-xs text-[var(--ink)]/45">
-            Debug tip: rejecting this form is not a supported code path ♡
-          </p>
         </StepShell>
       )}
 
       {step === 'when' && (
         <StepShell
           stepKey="when"
-          title="When should our story begin?"
-          subtitle="Only this week. After 20:00 that day closes. No booking the year 2035."
+          title="When should we go?"
+          subtitle="Pick a day this week, then a time."
         >
-          <div className="mb-6 grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {weekDays.map((day) => {
+          <div className="chip-row mb-5">
+            {availableDays.map((day) => {
               const selected = answers.dateDay === day.iso
               return (
                 <button
                   key={day.iso}
                   type="button"
-                  disabled={!day.available}
-                  onClick={() => savePartial({ dateDay: day.iso })}
-                  className={`rounded-2xl px-3 py-3 text-left transition ${
-                    !day.available
-                      ? 'cursor-not-allowed bg-white/30 text-[var(--ink)]/30 line-through'
-                      : selected
-                        ? 'bg-[var(--pink)] text-white shadow-lg shadow-pink-300/40'
-                        : 'bg-white/60 text-[var(--night)] hover:bg-white/90'
+                  onClick={() => savePartial({ dateDay: day.iso, dateTime: '' })}
+                  className={`min-w-[4.6rem] rounded-2xl px-3.5 py-3 text-left transition ${
+                    selected
+                      ? 'bg-[var(--pink)] text-white shadow-lg shadow-pink-300/40'
+                      : 'bg-white/80 text-[var(--night)]'
                   }`}
                 >
-                  <span className="block text-xs uppercase tracking-wide opacity-80">{day.label}</span>
-                  <span className="block text-sm font-semibold">
+                  <span className="block text-[0.65rem] uppercase tracking-wide opacity-80">{day.label}</span>
+                  <span className="block text-sm font-bold">
                     {day.date.getDate()} {day.date.toLocaleDateString(undefined, { month: 'short' })}
                   </span>
                 </button>
@@ -424,19 +432,19 @@ export default function App() {
             })}
           </div>
 
-          <p className="mb-3 text-sm font-semibold text-[var(--rose)]">Pick a time ♥</p>
-          <div className="mb-8 flex flex-wrap gap-2">
-            {TIME_SLOTS.map((slot) => {
+          <p className="mb-2.5 text-sm font-semibold text-[var(--rose)]">Pick a time ♥</p>
+          <div className="mb-6 flex flex-wrap gap-2">
+            {timeSlots.map((slot) => {
               const selected = answers.dateTime === slot
               return (
                 <button
                   key={slot}
                   type="button"
                   onClick={() => savePartial({ dateTime: slot })}
-                  className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
+                  className={`min-h-11 rounded-xl px-3.5 py-2 text-sm font-semibold transition ${
                     selected
                       ? 'bg-[var(--rose)] text-white'
-                      : 'bg-white/65 text-[var(--night)] hover:bg-white'
+                      : 'bg-white/80 text-[var(--night)]'
                   }`}
                 >
                   {slot}
@@ -447,9 +455,9 @@ export default function App() {
 
           <button
             type="button"
+            className="btn-primary w-full"
             disabled={!answers.dateDay || !answers.dateTime}
             onClick={() => setStep('what')}
-            className="w-full rounded-2xl bg-[var(--pink)] px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-pink-300/40 transition enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
           >
             Next: the date vibe
           </button>
@@ -459,10 +467,10 @@ export default function App() {
       {step === 'what' && (
         <StepShell
           stepKey="what"
-          title="Choose our little adventure"
-          subtitle="Three romantic side quests. Pick the one that makes your heart smile."
+          title="Choose our adventure"
+          subtitle="Dinner, bowling, or swimming — pick your vibe."
         >
-          <div className="mb-8 flex flex-col gap-3">
+          <div className="mb-6 flex flex-col gap-2.5">
             {ACTIVITIES.map((activity) => {
               const selected = answers.activity === activity.id
               return (
@@ -470,21 +478,23 @@ export default function App() {
                   key={activity.id}
                   type="button"
                   onClick={() => savePartial({ activity: activity.id })}
-                  className={`flex items-center gap-4 overflow-hidden rounded-2xl p-2 pr-4 text-left transition ${
+                  className={`flex items-center gap-3 overflow-hidden rounded-2xl p-1.5 pr-3 text-left transition ${
                     selected
                       ? 'bg-[var(--pink)] text-white shadow-lg shadow-pink-300/40'
-                      : 'bg-white/70 text-[var(--night)] hover:bg-white'
+                      : 'bg-white/80 text-[var(--night)]'
                   }`}
                 >
                   <img
                     src={activity.image}
                     alt=""
-                    className="h-20 w-20 shrink-0 rounded-xl object-cover"
+                    className="h-[4.25rem] w-[4.25rem] shrink-0 rounded-[0.9rem] object-cover sm:h-20 sm:w-20"
                   />
-                  <span>
-                    <span className="block text-base font-bold">{activity.label}</span>
+                  <span className="min-w-0">
+                    <span className="block text-[0.98rem] font-bold">{activity.label}</span>
                     <span
-                      className={`mt-1 block text-sm ${selected ? 'text-white/85' : 'text-[var(--ink)]/65'}`}
+                      className={`mt-0.5 block text-[0.8rem] leading-snug ${
+                        selected ? 'text-white/85' : 'text-[var(--ink)]/65'
+                      }`}
                     >
                       {activity.blurb}
                     </span>
@@ -494,19 +504,15 @@ export default function App() {
             })}
           </div>
 
-          <div className="flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={() => setStep('when')}
-              className="rounded-2xl border border-[var(--rose)]/30 bg-white/50 px-5 py-3 text-sm font-semibold text-[var(--rose)] hover:bg-white"
-            >
+          <div className="action-row">
+            <button type="button" className="btn-ghost w-full sm:w-auto" onClick={() => setStep('when')}>
               Back
             </button>
             <button
               type="button"
+              className="btn-primary w-full flex-1 sm:w-auto"
               disabled={!answers.activity}
               onClick={() => setStep('notes')}
-              className="rounded-2xl bg-[var(--pink)] px-6 py-3 text-sm font-bold text-white transition enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
             >
               Next: notes
             </button>
@@ -518,7 +524,7 @@ export default function App() {
         <StepShell
           stepKey="notes"
           title="Notes for the gentleman"
-          subtitle="Dress code hints, allergies, playlist wishes, or just something sweet."
+          subtitle="Something sweet, practical, or mysterious."
           image={ACTIVITIES.find((a) => a.id === answers.activity)?.image || heroRomance}
           imageAlt="Chosen date activity"
         >
@@ -527,36 +533,32 @@ export default function App() {
           </label>
           <textarea
             id="notes"
-            rows={5}
+            rows={4}
             maxLength={1000}
             value={answers.notes}
             onChange={(e) => savePartial({ notes: e.target.value })}
             placeholder="e.g. please bring flowers… or just your best smile"
-            className="mb-6 w-full resize-y rounded-2xl border border-[var(--pink)]/30 bg-white/70 px-4 py-3 text-sm text-[var(--night)] outline-none placeholder:text-[var(--ink)]/35 focus:border-[var(--pink)]"
+            className="mb-4 w-full resize-y rounded-2xl border border-[var(--pink)]/30 bg-white/85 px-3.5 py-3 text-sm text-[var(--night)] outline-none placeholder:text-[var(--ink)]/35 focus:border-[var(--pink)]"
           />
 
-          <div className="mb-4 rounded-2xl bg-white/65 px-4 py-3 text-sm text-[var(--ink)]/80">
+          <div className="mb-4 rounded-2xl bg-white/75 px-3.5 py-3 text-[0.8rem] leading-relaxed text-[var(--ink)]/80">
             <p>
               <span className="font-semibold text-[var(--rose)]">Yes ♥</span> · {answers.dateDay || '—'} at{' '}
               {answers.dateTime || '—'} · {answers.activity || '—'}
             </p>
           </div>
 
-          {error ? <p className="mb-4 text-sm text-[var(--rose)]">{error}</p> : null}
+          {error ? <p className="mb-3 text-sm text-[var(--rose)]">{error}</p> : null}
 
-          <div className="flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={() => setStep('what')}
-              className="rounded-2xl border border-[var(--rose)]/30 bg-white/50 px-5 py-3 text-sm font-semibold text-[var(--rose)] hover:bg-white"
-            >
+          <div className="action-row">
+            <button type="button" className="btn-ghost w-full sm:w-auto" onClick={() => setStep('what')}>
               Back
             </button>
             <button
               type="button"
+              className="btn-primary animate-heartbeat w-full flex-1 sm:w-auto"
               disabled={submitting}
               onClick={submit}
-              className="animate-heartbeat rounded-2xl bg-[var(--pink)] px-6 py-3 text-sm font-bold text-white transition hover:brightness-110 disabled:opacity-60"
             >
               {submitting ? 'Sending…' : 'Submit with love ♥'}
             </button>
@@ -568,15 +570,15 @@ export default function App() {
         <StepShell
           stepKey="done"
           title="She said yes."
-          subtitle="Your answers are saved and the gentleman has been notified. See you soon ♥"
+          subtitle="Saved and sent. See you soon ♥"
           image={ACTIVITIES.find((a) => a.id === answers.activity)?.image || heroRomance}
           imageAlt="Confirmed date vibe"
         >
-          <div className="rounded-2xl border border-[var(--pink)]/25 bg-white/75 px-5 py-5 text-[var(--night)] shadow-[0_16px_40px_rgba(232,58,122,0.15)]">
-            <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-[var(--rose)]">
+          <div className="rounded-2xl border border-[var(--pink)]/25 bg-white/80 px-4 py-4 text-[var(--night)]">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--rose)]">
               Confirmed with love
             </p>
-            <ul className="space-y-1 text-sm sm:text-base">
+            <ul className="space-y-1.5 text-sm">
               <li>Status: she said yes ♥</li>
               <li>
                 When: {answers.dateDay} · {answers.dateTime}
